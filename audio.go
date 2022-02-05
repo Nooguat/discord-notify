@@ -56,6 +56,7 @@ func setSoundNone() {
 func setSound(data io.ReadCloser, name string) error {
 	streamer, format, err := mp3.Decode(data)
 	currentSound = NotifySound{name: name, format: format, buffer: beep.NewBuffer(format)}
+	speaker.Init(currentSound.format.SampleRate, currentSound.format.SampleRate.N(time.Second/10))
 	if err != nil {
 		return fmt.Errorf("error decoding sound: %w", err)
 	}
@@ -64,13 +65,8 @@ func setSound(data io.ReadCloser, name string) error {
 }
 
 func playSound() {
-	if currentSound.buffer != nil {
-		err := speaker.Init(currentSound.format.SampleRate, currentSound.format.SampleRate.N(time.Second/10))
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "failed to init speaker for sound: ", err)
-			return
-		}
-		sound := currentSound.buffer.Streamer(0, currentSound.buffer.Len())
-		speaker.Play(sound)
-	}
+
+	sound := currentSound.buffer.Streamer(0, currentSound.buffer.Len())	
+	speaker.Play(sound)
 }
+

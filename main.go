@@ -239,7 +239,7 @@ func shouldShowNotification(s *discordgo.Session, m *discordgo.Message) bool {
 
 	notificationSetting := notifyOption(ugs.MessageNotifications)
 	muted := ugs.Muted
-
+	Println(muted)
 	// apply overrides
 	for _, override := range ugs.ChannelOverrides {
 		if override.ChannelID == m.ChannelID {
@@ -266,10 +266,6 @@ func shouldShowNotification(s *discordgo.Session, m *discordgo.Message) bool {
 		return true
 	}
 
-	// no need to send the notification when ripcord is focused
-	if ripFocused, err := isRipcordFocused(); err == nil && ripFocused {
-		return false
-	}
 
 	// ignore if we sent the message
 	if m.Author.ID == s.State.User.ID {
@@ -325,6 +321,17 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if !shouldShowNotification(s, m.Message) {
 		return
 	}
+	if m.Content == "" {
+		chanMsgs, err := s.ChannelMessages(m.ChannelID, 1, "", "", m.ID)
+		if err != nil {
+			fmt.Println("unable to get messages: %s", err)
+			return
+		}
+		
+		m.Content = chanMsgs[0].Content
+		m.Attachments = chanMsgs[0].Attachments
+	}
+	
 	playSound()
 
 	title, body := formatNotification(s, m.Message)
@@ -354,16 +361,14 @@ func formatNotification(s *discordgo.Session, m *discordgo.Message) (title, body
 	}
 	title = fmt.Sprintf("%s (%s)", authorName, locationText)
 
-	var err error
-	body, err = m.ContentWithMoreMentionsReplaced(s)
-	if err != nil {
-		body = m.ContentWithMentionsReplaced()
-	}
+	body = m.Content
 
 	// iterate in reverse order since we're adding a prefix each iteration
 	for i := len(m.Attachments) - 1; i >= 0; i-- {
 		body = fmt.Sprintf("[%s]\n%s", m.Attachments[i].Filename, body)
 	}
+	
+	
 	return
 }
 
